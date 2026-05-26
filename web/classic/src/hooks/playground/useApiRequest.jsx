@@ -32,6 +32,8 @@ import {
   processIncompleteThinkTags,
 } from '../../helpers';
 
+const STREAM_RECONNECT_MAX_RETRIES = 10;
+
 export const useApiRequest = (
   setMessage,
   setDebugData,
@@ -320,6 +322,8 @@ export const useApiRequest = (
         },
         method: 'POST',
         payload: JSON.stringify(payload),
+        autoReconnect: true,
+        maxRetries: STREAM_RECONNECT_MAX_RETRIES,
       });
 
       sseSourceRef.current = source;
