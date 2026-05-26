@@ -22,6 +22,8 @@ import { getCommonHeaders } from '@/lib/api'
 import { API_ENDPOINTS, ERROR_MESSAGES } from '../constants'
 import type { ChatCompletionRequest, ChatCompletionChunk } from '../types'
 
+const STREAM_RECONNECT_MAX_RETRIES = 10
+
 /**
  * Hook for handling streaming chat completion requests
  */
@@ -40,6 +42,8 @@ export function useStreamRequest() {
         headers: getCommonHeaders(),
         method: 'POST',
         payload: JSON.stringify(payload),
+        autoReconnect: true,
+        maxRetries: STREAM_RECONNECT_MAX_RETRIES,
       })
 
       sseSourceRef.current = source

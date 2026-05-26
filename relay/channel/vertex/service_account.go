@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
@@ -20,12 +22,23 @@ import (
 	"time"
 )
 
+const metadataBaseURL = "http://metadata.google.internal/computeMetadata/v1"
+
 type Credentials struct {
 	ProjectID    string `json:"project_id"`
 	PrivateKeyID string `json:"private_key_id"`
 	PrivateKey   string `json:"private_key"`
 	ClientEmail  string `json:"client_email"`
 	ClientID     string `json:"client_id"`
+}
+
+func IsADCKey(apiKey string) bool {
+	switch strings.ToLower(strings.TrimSpace(apiKey)) {
+	case "adc", "google_adc", "cloud_run_adc", "metadata":
+		return true
+	default:
+		return false
+	}
 }
 
 var Cache = asynccache.NewAsyncCache(asynccache.Options{
@@ -49,6 +62,17 @@ func getAccessToken(a *Adaptor, info *relaycommon.RelayInfo) (string, error) {
 		return val.(string), nil
 	}
 
+	if a.UseADC {
+		newToken, err := acquireMetadataAccessToken()
+		if err != nil {
+			return "", err
+		}
+		if err := Cache.SetDefault(cacheKey, newToken); err {
+			return newToken, nil
+		}
+		return newToken, nil
+	}
+
 	signedJWT, err := createSignedJWT(a.AccountCredentials.ClientEmail, a.AccountCredentials.PrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to create signed JWT: %w", err)
@@ -61,6 +85,65 @@ func getAccessToken(a *Adaptor, info *relaycommon.RelayInfo) (string, error) {
 		return newToken, nil
 	}
 	return newToken, nil
+}
+
+func GetADCProjectID() (string, error) {
+	for _, envName := range []string{"GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID", "GCLOUD_PROJECT"} {
+		if projectID := strings.TrimSpace(os.Getenv(envName)); projectID != "" {
+			return projectID, nil
+		}
+	}
+
+	req, err := http.NewRequest(http.MethodGet, metadataBaseURL+"/project/project-id", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Metadata-Flavor", "Google")
+	resp, err := metadataHTTPClient().Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to query metadata project id: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("metadata project id request failed: %s", resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	projectID := strings.TrimSpace(string(body))
+	if projectID == "" {
+		return "", errors.New("metadata project id is empty")
+	}
+	return projectID, nil
+}
+
+func metadataHTTPClient() *http.Client {
+	return &http.Client{Timeout: 5 * time.Second}
+}
+
+func acquireMetadataAccessToken() (string, error) {
+	req, err := http.NewRequest(http.MethodGet, metadataBaseURL+"/instance/service-accounts/default/token", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Metadata-Flavor", "Google")
+	resp, err := metadataHTTPClient().Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to query metadata access token: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("metadata access token request failed: %s", resp.Status)
+	}
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if accessToken, ok := result["access_token"].(string); ok && accessToken != "" {
+		return accessToken, nil
+	}
+	return "", fmt.Errorf("metadata access token response missing access_token: %v", result)
 }
 
 func createSignedJWT(email, privateKeyPEM string) (string, error) {

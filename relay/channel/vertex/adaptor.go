@@ -52,6 +52,7 @@ const anthropicVersion = "vertex-2023-10-16"
 type Adaptor struct {
 	RequestMode        int
 	AccountCredentials Credentials
+	UseADC             bool
 }
 
 func (a *Adaptor) ConvertGeminiRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.GeminiChatRequest) (any, error) {
@@ -127,6 +128,22 @@ func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
 func (a *Adaptor) getRequestUrl(info *relaycommon.RelayInfo, modelName, suffix string) (string, error) {
 	region := GetModelRegion(info.ApiVersion, info.OriginModelName)
 	if info.ChannelOtherSettings.VertexKeyType != dto.VertexKeyTypeAPIKey {
+		if IsADCKey(info.ApiKey) {
+			projectID, err := GetADCProjectID()
+			if err != nil {
+				return "", err
+			}
+			a.UseADC = true
+			a.AccountCredentials.ProjectID = projectID
+
+			if a.RequestMode == RequestModeGemini {
+				return BuildGoogleModelURL(info.ChannelBaseUrl, DefaultAPIVersion, projectID, region, modelName, suffix), nil
+			} else if a.RequestMode == RequestModeClaude {
+				return BuildAnthropicModelURL(info.ChannelBaseUrl, DefaultAPIVersion, projectID, region, modelName, suffix), nil
+			} else if a.RequestMode == RequestModeOpenSource {
+				return BuildOpenSourceChatCompletionsURL(info.ChannelBaseUrl, projectID, region), nil
+			}
+		}
 		adc := &Credentials{}
 		if err := common.Unmarshal([]byte(info.ApiKey), adc); err != nil {
 			return "", fmt.Errorf("failed to decode credentials file: %w", err)
