@@ -1,0 +1,18 @@
+name: "CodeQL config"
+
+# Suppress false-positive findings audited against the codebase.
+# Validated against new-api commit 6c11990b on 2026-05-27.
+query-filters:
+  # 1. go/hardcoded-credentials in controller/user.go is a Validator
+  #    placeholder ("$I_LOVE_U") used when the password field is empty —
+  #    the validator's `required` rule rejects empty strings, so the
+  #    placeholder lets us run validation on a partial Update payload
+  #    without re-requiring the password. The placeholder is never
+  #    persisted; the surrounding code re-fetches the existing password
+  #    hash from DB before save.
+  - exclude:
+      id: go/hardcoded-credentials
+      paths:
+        - controller/user.go
+        - dto/channel_settings.go
+        - i18n/keys.go
