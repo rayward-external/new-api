@@ -29,7 +29,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [actions, go, javascript-typescript]
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: go
+            build-mode: autobuild
 
     steps:
       - name: Checkout repository
@@ -37,11 +43,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v5.1.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3 # v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis
