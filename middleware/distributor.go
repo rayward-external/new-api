@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -83,6 +84,7 @@ func Distribute() func(c *gin.Context) {
 				}
 				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+				geoBucket := ""
 				// check path is /pg/chat/completions
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
 					playgroundRequest := &dto.PlayGroundRequest{}
@@ -99,6 +101,11 @@ func Distribute() func(c *gin.Context) {
 						usingGroup = playgroundRequest.Group
 						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 					}
+				}
+				if service.ShouldApplyGeoBucketOverride(usingGroup) {
+					geoBucket = service.ResolveGeoBucketFromHeaders(c.Request.Header)
+					usingGroup = geoBucket
+					common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 				}
 
 				if preferredChannelID, found := service.GetPreferredChannelByAffinity(c, modelRequest.Model, usingGroup); found {
@@ -153,6 +160,26 @@ func Distribute() func(c *gin.Context) {
 					if channel == nil {
 						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgDistributorNoAvailableChannel, map[string]any{"Group": usingGroup, "Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
 						return
+					}
+				}
+				if geoBucket == "" {
+					geoBucket = service.ResolveGeoBucketFromHeaders(c.Request.Header)
+				}
+				c.Header("X-Rayward-Geo-Bucket", geoBucket)
+				c.Header("X-Rayward-Selected-Group", usingGroup)
+				if channel != nil {
+					if channel.Name != "" {
+						c.Header("X-Rayward-Selected-Channel", channel.Name)
+					}
+					if baseURL := strings.TrimSpace(channel.GetBaseURL()); baseURL != "" {
+						if parsed, parseErr := url.Parse(baseURL); parseErr == nil && parsed.Host != "" {
+							c.Header("X-Rayward-Selected-Base-Url", parsed.Host)
+						} else {
+							c.Header("X-Rayward-Selected-Base-Url", baseURL)
+						}
+					}
+					if channel.Tag != nil && strings.TrimSpace(*channel.Tag) != "" {
+						c.Header("X-Rayward-Selected-Tag", strings.TrimSpace(*channel.Tag))
 					}
 				}
 			}
