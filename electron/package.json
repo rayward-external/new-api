@@ -28,6 +28,10 @@
     "electron": "39.8.5",
     "electron-builder": "^26.7.0"
   },
+  "overrides": {
+    "brace-expansion": "5.0.6",
+    "ajv": "6.14.0"
+  },
   "build": {
     "appId": "com.newapi.desktop",
     "productName": "New-API-App",
