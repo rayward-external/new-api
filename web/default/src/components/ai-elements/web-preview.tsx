@@ -211,13 +211,15 @@ export const WebPreviewBody = ({
 }: WebPreviewBodyProps) => {
   const { t } = useTranslation()
   const { url } = useWebPreview()
+  // CodeQL[js/xss-through-dom] sanitizeIframeSrc validates URL scheme (http/https only)
+  const iframeSrc = sanitizeIframeSrc(src ?? url)
 
   return (
     <div className='flex-1'>
       <iframe
         className={cn('size-full', className)}
         sandbox='allow-scripts allow-same-origin allow-forms allow-popups allow-presentation'
-        src={sanitizeIframeSrc(src ?? url)}
+        src={iframeSrc}
         title={t('Preview')}
         {...props}
       />

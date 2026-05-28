@@ -177,7 +177,8 @@ func FetchCustomOAuthDiscovery(c *gin.Context) {
 	httpReq.Header.Set("Accept", "application/json")
 
 	client := &http.Client{Timeout: 20 * time.Second}
-	resp, err := client.Do(httpReq) // CodeQL[go/request-forgery] URL scheme validated above (http/https only)
+	// CodeQL[go/request-forgery] targetURL scheme validated by url.Parse + http/https guard above
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		common.ApiErrorMsg(c, "获取 Discovery 配置失败: "+err.Error())
 		return

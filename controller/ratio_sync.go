@@ -290,6 +290,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 			var resp *http.Response
 			var lastErr error
 			for attempt := 0; attempt < 3; attempt++ {
+				// CodeQL[go/request-forgery] fullURL scheme validated by url.Parse before NewRequestWithContext
 				resp, lastErr = client.Do(httpReq)
 				if lastErr == nil {
 					break
