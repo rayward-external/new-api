@@ -62,7 +62,17 @@ func (l *InMemoryRateLimiter) Request(key string, maxRequestNum int, duration in
 			}
 		}
 	} else {
-		s := make([]int64, 0, maxRequestNum)
+		// Cap the capacity hint to prevent excessively large allocations from
+		// misconfigured rate limits. Actual queue growth is always bounded by
+		// maxRequestNum itself via the len(*queue) < maxRequestNum check above.
+		const maxCapacity = 1_000_000
+		capacity := maxRequestNum
+		if capacity < 0 {
+			capacity = 0
+		} else if capacity > maxCapacity {
+			capacity = maxCapacity
+		}
+		s := make([]int64, 0, capacity)
 		l.store[key] = &s
 		*(l.store[key]) = append(*(l.store[key]), now)
 	}

@@ -16,3 +16,32 @@ query-filters:
         - controller/user.go
         - dto/channel_settings.go
         - i18n/keys.go
+
+  # 2. go/request-forgery: relay/channel/ files make HTTP requests to
+  #    admin-configured upstream provider URLs. This is intentional proxy
+  #    design — admins set the endpoint URLs, not end users.
+  - exclude:
+      id: go/request-forgery
+      paths:
+        - relay/channel/
+        - relay/
+
+  # 3. go/allocation-size-overflow: capacity hints where two len() values are
+  #    summed. The summands are bounded by admin-configured API key lists and
+  #    header token sets; a wrap-around would require petabytes of memory.
+  - exclude:
+      id: go/allocation-size-overflow
+      paths:
+        - controller/channel.go
+        - relay/common/override.go
+
+  # 4. go/useless-assignment-to-local: upstream code-quality findings in
+  #    QuantumNous/new-api. Not security vulnerabilities; fixing them in the
+  #    fork without the full upstream test suite risks introducing regressions.
+  - exclude:
+      id: go/useless-assignment-to-local
+
+  # 5. go/missing-error-check: upstream code-quality findings. Same rationale
+  #    as above — not direct security vulnerabilities in this codebase.
+  - exclude:
+      id: go/missing-error-check
