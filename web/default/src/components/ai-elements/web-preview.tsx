@@ -198,6 +198,11 @@ export type WebPreviewBodyProps = ComponentProps<'iframe'> & {
   loading?: ReactNode
 }
 
+function sanitizeIframeSrc(rawUrl: string | undefined): string | undefined {
+  if (!rawUrl) return undefined
+  return /^https?:\/\//i.test(rawUrl) ? rawUrl : undefined
+}
+
 export const WebPreviewBody = ({
   className,
   loading,
@@ -206,13 +211,15 @@ export const WebPreviewBody = ({
 }: WebPreviewBodyProps) => {
   const { t } = useTranslation()
   const { url } = useWebPreview()
+  // CodeQL[js/xss-through-dom] sanitizeIframeSrc validates URL scheme (http/https only)
+  const iframeSrc = sanitizeIframeSrc(src ?? url)
 
   return (
     <div className='flex-1'>
       <iframe
         className={cn('size-full', className)}
         sandbox='allow-scripts allow-same-origin allow-forms allow-popups allow-presentation'
-        src={(src ?? url) || undefined}
+        src={iframeSrc} // CodeQL[js/xss-through-dom] sanitizeIframeSrc validates URL scheme (http/https only)
         title={t('Preview')}
         {...props}
       />

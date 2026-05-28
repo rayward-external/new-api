@@ -1,0 +1,22 @@
+# Fork-maintained security patches for rayward-external/new-api
+#
+# Upstream (QuantumNous/new-api) does not carry these changes.
+# Upstream syncs overwrite the files below; daily-patch-verify re-applies them.
+#
+# Format: <file> | <grep_pattern_that_proves_patch_is_present> | <human_description>
+#
+# How the routine uses this:
+#   For each line, grep for the pattern in the file.
+#   PASS → patch is intact, nothing to do.
+#   FAIL → patch was wiped; agent reads the file, understands the missing invariant
+#           from the description, and applies the minimal targeted fix using Edit.
+#   After fixing: commit, push fix branch, open PR, wait for CI, merge.
+#
+# Updating this file:
+#   When you add a new security patch, append a line here.
+#   When upstream accepts one of our patches, remove the line.
+
+common/email.go           | Strip CRLF from receiver            | SMTP header injection: strip \r\n from receiver param before use in To: header
+common/email.go           | TLSInsecureSkipVerify                | SMTP TLS: InsecureSkipVerify must read common.TLSInsecureSkipVerify (not hardcoded true/false)
+common/rate-limit.go      | 1_000_000                           | Uncontrolled allocation: cap slice capacity to 1_000_000 to prevent OOM from misconfigured limits
+controller/misc.go        | url.QueryEscape                     | Unsafe quoting: password reset link must URL-encode the email param and use html.EscapeString on the href

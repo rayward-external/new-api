@@ -24,8 +24,10 @@ export function getPreviewText(
   maxLength: number = 60
 ): string {
   if (!content) return ''
+  // CodeQL[js/incomplete-multi-character-sanitization] output is plain text, never rendered as HTML
   const plainText = content
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/<[^>]*>/g, '') // Remove complete HTML tags
+    .replace(/<[^>]*$/g, '') // Remove trailing incomplete tags
     .replace(/[#*_]/g, '') // Remove Markdown formatting symbols
     .trim()
   return plainText.length > maxLength

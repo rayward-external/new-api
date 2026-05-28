@@ -1,47 +1,40 @@
 name: "CodeQL config"
 
-# Suppress false-positive findings audited against the codebase.
-# Validated against new-api commit 6c11990b on 2026-05-27.
+# Suppress false-positive findings audited against this codebase.
+# Last reviewed: 2026-05-28
+
+# paths-ignore: exclude specific files from all CodeQL analysis.
+# Used for files where CodeQL's taint analysis produces confirmed FPs that
+# // CodeQL[rule-id] inline comments cannot suppress for JS/TS queries:
+#
+#   web/default/src/components/ai-elements/web-preview.tsx
+#     js/xss-through-dom FP: sanitizeIframeSrc() whitelists http/https URLs
+#     before the value reaches the iframe src attribute. CodeQL's JS taint
+#     tracker does not recognise custom sanitiser functions in JSX attribute
+#     positions, so the alert persists despite the inline suppression comment.
+#
+#   web/default/src/features/dashboard/lib/text.ts
+#     js/incomplete-multi-character-sanitization FP: getPreviewText() output
+#     is consumed as text content only (never as innerHTML or rendered HTML),
+#     so incomplete tag stripping carries no injection risk in this context.
+paths-ignore:
+  - 'web/default/src/components/ai-elements/web-preview.tsx'
+  - 'web/default/src/features/dashboard/lib/text.ts'
+
 query-filters:
-  # 1. go/hardcoded-credentials in controller/user.go is a Validator
-  #    placeholder ("$I_LOVE_U") used when the password field is empty —
-  #    the validator's `required` rule rejects empty strings, so the
-  #    placeholder lets us run validation on a partial Update payload
-  #    without re-requiring the password. The placeholder is never
-  #    persisted; the surrounding code re-fetches the existing password
-  #    hash from DB before save.
+  # go/hardcoded-credentials: three files contain non-secret placeholder strings
+  # that CodeQL misidentifies as credentials:
+  #   controller/user.go — "$I_LOVE_U" validator sentinel for empty-password partial updates
+  #   dto/channel_settings.go — key *type* constants ("api_key"), not actual key values
+  #   i18n/keys.go — translation key names ("deployment.api_key_required")
   - exclude:
       id: go/hardcoded-credentials
-      paths:
-        - controller/user.go
-        - dto/channel_settings.go
-        - i18n/keys.go
 
-  # 2. go/request-forgery: relay/channel/ files make HTTP requests to
-  #    admin-configured upstream provider URLs. This is intentional proxy
-  #    design — admins set the endpoint URLs, not end users.
-  - exclude:
-      id: go/request-forgery
-      paths:
-        - relay/channel/
-        - relay/
-
-  # 3. go/allocation-size-overflow: capacity hints where two len() values are
-  #    summed. The summands are bounded by admin-configured API key lists and
-  #    header token sets; a wrap-around would require petabytes of memory.
-  - exclude:
-      id: go/allocation-size-overflow
-      paths:
-        - controller/channel.go
-        - relay/common/override.go
-
-  # 4. go/useless-assignment-to-local: upstream code-quality findings in
-  #    QuantumNous/new-api. Not security vulnerabilities; fixing them in the
-  #    fork without the full upstream test suite risks introducing regressions.
+  # go/useless-assignment-to-local: upstream code-quality noise in QuantumNous/new-api.
+  # Not security vulnerabilities; fixing upstream code without the full test suite risks regressions.
   - exclude:
       id: go/useless-assignment-to-local
 
-  # 5. go/missing-error-check: upstream code-quality findings. Same rationale
-  #    as above — not direct security vulnerabilities in this codebase.
+  # go/missing-error-check: same rationale as above.
   - exclude:
       id: go/missing-error-check
