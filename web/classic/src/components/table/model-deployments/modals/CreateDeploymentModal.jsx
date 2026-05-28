@@ -316,7 +316,9 @@ const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
   }, [selectedHardwareId, visible, formApi]);
 
   const resetFormState = () => {
-    const randomName = `deployment-${Math.random().toString(36).slice(2, 8)}`;
+    const nameBytes = new Uint32Array(1);
+    crypto.getRandomValues(nameBytes);
+    const randomName = `deployment-${nameBytes[0].toString(36).slice(0, 6)}`;
     const generatedKey = generateRandomKey();
 
     setSelectedHardwareId(null);

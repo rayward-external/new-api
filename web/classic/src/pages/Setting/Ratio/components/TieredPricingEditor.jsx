@@ -928,7 +928,7 @@ function CacheTokenEstimatorInputs({
 }) {
   const usesExtra = useMemo(() => {
     if (!effectiveExpr) return false;
-    const varNames = EXTRA_ESTIMATOR_FIELDS.map((f) => f.var.replace('_', '_')).join('|');
+    const varNames = EXTRA_ESTIMATOR_FIELDS.map((f) => f.var).join('|');
     return new RegExp(`\\b(${varNames})\\b`).test(effectiveExpr);
   }, [effectiveExpr]);
 

@@ -12,6 +12,8 @@ on:
         required: true
         type: string
 
+permissions: {}
+
 jobs:
   build_single_arch:
     name: Build & push (${{ matrix.arch }})

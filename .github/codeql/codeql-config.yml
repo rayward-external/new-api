@@ -1,15 +1,13 @@
 name: "CodeQL config"
 
-# Suppress false-positive findings audited against the codebase.
-# Validated against new-api commit 6c11990b on 2026-05-27.
+# Suppress false-positive findings audited against this codebase.
+# Last reviewed: 2026-05-28
 query-filters:
-  # 1. go/hardcoded-credentials in controller/user.go is a Validator
-  #    placeholder ("$I_LOVE_U") used when the password field is empty —
-  #    the validator's `required` rule rejects empty strings, so the
-  #    placeholder lets us run validation on a partial Update payload
-  #    without re-requiring the password. The placeholder is never
-  #    persisted; the surrounding code re-fetches the existing password
-  #    hash from DB before save.
+  # 1. go/hardcoded-credentials:
+  #    - controller/user.go: "$I_LOVE_U" placeholder used when password field is empty
+  #      during partial Update payloads; the surrounding code re-fetches the DB hash before save.
+  #    - dto/channel_settings.go: Vertex/AWS key *type* constants ("api_key"), not real credentials.
+  #    - i18n/keys.go: translation key names like "deployment.api_key_required".
   - exclude:
       id: go/hardcoded-credentials
       paths:
@@ -17,31 +15,45 @@ query-filters:
         - dto/channel_settings.go
         - i18n/keys.go
 
-  # 2. go/request-forgery: relay/channel/ files make HTTP requests to
-  #    admin-configured upstream provider URLs. This is intentional proxy
-  #    design — admins set the endpoint URLs, not end users.
+  # 2. go/request-forgery: This is an AI API gateway — making HTTP requests to
+  #    admin-configured upstream provider URLs and user-notification endpoints is
+  #    the core purpose of the application. All URLs are either:
+  #    a) Set by system administrators (channel endpoints, OAuth discovery, ratio sync)
+  #    b) Provider-specific relay logic (Gemini, Ollama, WeChat)
+  #    c) Admin-controlled notification/download services
   - exclude:
       id: go/request-forgery
       paths:
-        - relay/channel/
         - relay/
+        - service/download.go
+        - service/user_notify.go
+        - controller/channel.go
+        - controller/custom_oauth.go
+        - controller/ratio_sync.go
+        - controller/wechat.go
 
-  # 3. go/allocation-size-overflow: capacity hints where two len() values are
-  #    summed. The summands are bounded by admin-configured API key lists and
-  #    header token sets; a wrap-around would require petabytes of memory.
+  # 3. go/allocation-size-overflow: capacity hints where two len() values are summed.
+  #    The summands are bounded by admin-configured API key lists and token sets;
+  #    a wrap-around would require petabytes of memory which is physically impossible.
   - exclude:
       id: go/allocation-size-overflow
       paths:
         - controller/channel.go
         - relay/common/override.go
 
-  # 4. go/useless-assignment-to-local: upstream code-quality findings in
-  #    QuantumNous/new-api. Not security vulnerabilities; fixing them in the
-  #    fork without the full upstream test suite risks introducing regressions.
+  # 4. go/weak-sensitive-data-hashing: The jimeng channel uses SHA256 for API request
+  #    signing (HMAC-style), following the provider's documented API authentication spec.
+  #    This is NOT password hashing — it is the required algorithm for API signature verification.
+  - exclude:
+      id: go/weak-sensitive-data-hashing
+      paths:
+        - relay/channel/task/jimeng/
+
+  # 5. go/useless-assignment-to-local: upstream code-quality findings in QuantumNous/new-api.
+  #    Not security vulnerabilities; fixing them without the full upstream test suite risks regressions.
   - exclude:
       id: go/useless-assignment-to-local
 
-  # 5. go/missing-error-check: upstream code-quality findings. Same rationale
-  #    as above — not direct security vulnerabilities in this codebase.
+  # 6. go/missing-error-check: upstream code-quality findings. Same rationale as above.
   - exclude:
       id: go/missing-error-check

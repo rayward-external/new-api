@@ -229,6 +229,7 @@ export const useLogsData = () => {
   }, [visibleColumns]);
 
   useEffect(() => {
+    // CodeQL[js/clear-text-storage-of-sensitive-data] billingDisplayMode is a UI display preference, not sensitive data
     localStorage.setItem(BILLING_DISPLAY_MODE_STORAGE_KEY, billingDisplayMode);
   }, [BILLING_DISPLAY_MODE_STORAGE_KEY, billingDisplayMode]);
 
