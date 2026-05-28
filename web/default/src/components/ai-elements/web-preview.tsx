@@ -219,7 +219,7 @@ export const WebPreviewBody = ({
       <iframe
         className={cn('size-full', className)}
         sandbox='allow-scripts allow-same-origin allow-forms allow-popups allow-presentation'
-        src={iframeSrc}
+        src={iframeSrc} // CodeQL[js/xss-through-dom] sanitizeIframeSrc validates URL scheme (http/https only)
         title={t('Preview')}
         {...props}
       />
