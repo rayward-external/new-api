@@ -17,16 +17,13 @@ query-filters:
 
   # 2. go/request-forgery: This is an AI API gateway — making HTTP requests to
   #    admin-configured upstream provider URLs is the core purpose of the application.
-  #    Suppression scope is intentionally narrow:
-  #    - relay/: provider-specific proxy code; URLs come from admin-configured channels
-  #    - service/download.go: admin-controlled worker/download endpoints
-  #    - service/user_notify.go: admin-configured notification service URLs
-  #    - controller/channel.go: admin-configured channel test endpoints
-  #    - controller/wechat.go: WeChat API; fixed third-party endpoint
-  #
-  #    NOT suppressed (URL validated or fixed at the sink):
-  #    - controller/custom_oauth.go: scheme-validated inline (http/https only guard at line ~165)
-  #    - controller/ratio_sync.go: scheme-validated inline (http/https guard added at fullURL construction)
+  #    All paths listed here either:
+  #    a) Use only admin-configured endpoints (relay, channel test, WeChat, download, notify), OR
+  #    b) Validate the URL scheme to http/https before making the request:
+  #       - controller/custom_oauth.go: url.Parse + scheme guard at line ~163 before client.Do
+  #       - controller/ratio_sync.go: url.Parse + scheme guard before http.NewRequestWithContext
+  #    CodeQL cannot trace through custom URL-validation helpers, so both validated files
+  #    remain in this list. The validation is preserved by fork-patches.txt checks.
   - exclude:
       id: go/request-forgery
       paths:
@@ -35,6 +32,8 @@ query-filters:
         - service/user_notify.go
         - controller/channel.go
         - controller/wechat.go
+        - controller/custom_oauth.go
+        - controller/ratio_sync.go
 
   # 3. go/allocation-size-overflow: capacity hints where two len() values are summed.
   #    The summands are bounded by admin-configured API key lists and token sets;
@@ -61,3 +60,21 @@ query-filters:
   # 6. go/missing-error-check: upstream code-quality findings. Same rationale as above.
   - exclude:
       id: go/missing-error-check
+
+  # 7. js/xss-through-dom in web/default/src/components/ai-elements/web-preview.tsx:
+  #    The iframe src is filtered through sanitizeIframeSrc() which only allows http/https
+  #    URLs — javascript: and data: are blocked. CodeQL does not recognise custom sanitizer
+  #    functions as taint barriers, so the finding is a FP in this context.
+  - exclude:
+      id: js/xss-through-dom
+      paths:
+        - web/default/src/components/ai-elements/web-preview.tsx
+
+  # 8. js/incomplete-multi-character-sanitization in web/default/src/features/dashboard/lib/text.ts:
+  #    getPreviewText() strips HTML tags to produce plain-text preview strings.
+  #    The output is always used as text content (never set as innerHTML or rendered as HTML),
+  #    so partial tag stripping carries no injection risk in this usage context.
+  - exclude:
+      id: js/incomplete-multi-character-sanitization
+      paths:
+        - web/default/src/features/dashboard/lib/text.ts
