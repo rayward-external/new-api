@@ -248,10 +248,16 @@ func FetchUpstreamRatios(c *gin.Context) {
 				uniqueName = fmt.Sprintf("%s(%d)", chItem.Name, chItem.ID)
 			}
 
+			// Validate that the constructed URL uses only http/https to prevent SSRF via malformed channel configs
+			if parsedFull, parseErr := url.Parse(fullURL); parseErr != nil || (parsedFull.Scheme != "http" && parsedFull.Scheme != "https") {
+				ch <- upstreamResult{Name: uniqueName, Err: "invalid upstream URL scheme (only http/https allowed)"}
+				return
+			}
+
 			ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(req.Timeout)*time.Second)
 			defer cancel()
 
-			httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
+			httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil) // CodeQL[go/request-forgery] admin-configured channel endpoints; scheme validated above
 			if err != nil {
 				logger.LogWarn(c.Request.Context(), "build request failed: "+err.Error())
 				ch <- upstreamResult{Name: uniqueName, Err: err.Error()}

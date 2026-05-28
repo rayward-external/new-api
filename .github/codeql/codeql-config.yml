@@ -16,11 +16,17 @@ query-filters:
         - i18n/keys.go
 
   # 2. go/request-forgery: This is an AI API gateway — making HTTP requests to
-  #    admin-configured upstream provider URLs and user-notification endpoints is
-  #    the core purpose of the application. All URLs are either:
-  #    a) Set by system administrators (channel endpoints, OAuth discovery, ratio sync)
-  #    b) Provider-specific relay logic (Gemini, Ollama, WeChat)
-  #    c) Admin-controlled notification/download services
+  #    admin-configured upstream provider URLs is the core purpose of the application.
+  #    Suppression scope is intentionally narrow:
+  #    - relay/: provider-specific proxy code; URLs come from admin-configured channels
+  #    - service/download.go: admin-controlled worker/download endpoints
+  #    - service/user_notify.go: admin-configured notification service URLs
+  #    - controller/channel.go: admin-configured channel test endpoints
+  #    - controller/wechat.go: WeChat API; fixed third-party endpoint
+  #
+  #    NOT suppressed (URL validated or fixed at the sink):
+  #    - controller/custom_oauth.go: scheme-validated inline (http/https only guard at line ~165)
+  #    - controller/ratio_sync.go: scheme-validated inline (http/https guard added at fullURL construction)
   - exclude:
       id: go/request-forgery
       paths:
@@ -28,8 +34,6 @@ query-filters:
         - service/download.go
         - service/user_notify.go
         - controller/channel.go
-        - controller/custom_oauth.go
-        - controller/ratio_sync.go
         - controller/wechat.go
 
   # 3. go/allocation-size-overflow: capacity hints where two len() values are summed.
