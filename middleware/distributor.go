@@ -103,7 +103,9 @@ func Distribute() func(c *gin.Context) {
 				}
 				if service.ShouldApplyGeoRouteOverride(usingGroup) {
 					geoBucket = service.ResolveGeoRouteFromHeaders(c.Request.Header)
-					usingGroup = geoBucket
+					// Select via the EXISTING geo-* group for this route id (channel
+					// `group` is varchar(64); reuse existing groups, no re-bootstrap).
+					usingGroup = service.GroupForRoute(geoBucket)
 					common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 				}
 

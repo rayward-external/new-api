@@ -19,6 +19,26 @@ var legacyRouteAlias = map[string]string{
 	"geo-us-east": GeoRouteUSEast, "geo-us-south": GeoRouteUSSouth,
 }
 
+// routeToGroup maps a normalized geo route id to the EXISTING New API channel
+// group that serves it. The channel `group` column is varchar(64) and cannot hold
+// both the new route ids and the legacy names at once, so we keep the existing
+// geo-* groups (internal, not exposed, not "rayward") and map the neutral
+// x-geo-route value onto them — no re-bootstrap, no new groups, no token rotation.
+var routeToGroup = map[string]string{
+	GeoRouteUSSouth: "geo-us-south",
+	GeoRouteUSEast:  "geo-us-east",
+	GeoRouteCA:      "geo-ca",
+	GeoRouteDefault: "geo-default",
+}
+
+// GroupForRoute returns the existing channel group that serves a resolved route id.
+func GroupForRoute(route string) string {
+	if g, ok := routeToGroup[route]; ok {
+		return g
+	}
+	return "geo-default"
+}
+
 var geoUSSouthStates = map[string]struct{}{
 	"AR": {},
 	"CA": {},
