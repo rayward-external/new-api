@@ -83,7 +83,6 @@ func Distribute() func(c *gin.Context) {
 				}
 				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
-				geoBucket := ""
 				// check path is /pg/chat/completions
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
 					playgroundRequest := &dto.PlayGroundRequest{}
@@ -102,10 +101,9 @@ func Distribute() func(c *gin.Context) {
 					}
 				}
 				if service.ShouldApplyGeoRouteOverride(usingGroup) {
-					geoBucket = service.ResolveGeoRouteFromHeaders(c.Request.Header)
 					// Select via the EXISTING geo-* group for this route id (channel
 					// `group` is varchar(64); reuse existing groups, no re-bootstrap).
-					usingGroup = service.GroupForRoute(geoBucket)
+					usingGroup = service.GroupForRoute(service.ResolveGeoRouteFromHeaders(c.Request.Header))
 					common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 				}
 
@@ -163,27 +161,15 @@ func Distribute() func(c *gin.Context) {
 						return
 					}
 				}
-				if geoBucket == "" {
-					geoBucket = service.ResolveGeoRouteFromHeaders(c.Request.Header)
-				}
 				// Resolved geo route — the NORMALIZED classification from request
 				// headers, not the effective channel group (`usingGroup` can be an
 				// explicit token/playground group). This is the route-id-level
 				// validation signal (us-south/us-east/ca/default).
 				c.Header("x-geo-route-resolved", service.ResolveGeoRouteFromHeaders(c.Request.Header))
-				c.Header("X-Rayward-Geo-Bucket", geoBucket)
-				c.Header("X-Rayward-Selected-Group", usingGroup)
 				if channel != nil {
-					if channel.Name != "" {
-						c.Header("X-Rayward-Selected-Channel", channel.Name)
-					}
 					if baseURL := strings.TrimSpace(channel.GetBaseURL()); baseURL != "" {
 						canonical := service.CanonicalUpstreamBaseURL(baseURL)
-						c.Header("x-upstream-base-url", canonical)         // new neutral header
-						c.Header("X-Rayward-Selected-Base-Url", canonical) // legacy, removed in Task 7
-					}
-					if channel.Tag != nil && strings.TrimSpace(*channel.Tag) != "" {
-						c.Header("X-Rayward-Selected-Tag", strings.TrimSpace(*channel.Tag))
+						c.Header("x-upstream-base-url", canonical) // neutral reveal header
 					}
 				}
 			}
