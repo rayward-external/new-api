@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -102,8 +101,8 @@ func Distribute() func(c *gin.Context) {
 						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 					}
 				}
-				if service.ShouldApplyGeoBucketOverride(usingGroup) {
-					geoBucket = service.ResolveGeoBucketFromHeaders(c.Request.Header)
+				if service.ShouldApplyGeoRouteOverride(usingGroup) {
+					geoBucket = service.ResolveGeoRouteFromHeaders(c.Request.Header)
 					usingGroup = geoBucket
 					common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 				}
@@ -163,8 +162,13 @@ func Distribute() func(c *gin.Context) {
 					}
 				}
 				if geoBucket == "" {
-					geoBucket = service.ResolveGeoBucketFromHeaders(c.Request.Header)
+					geoBucket = service.ResolveGeoRouteFromHeaders(c.Request.Header)
 				}
+				// Resolved geo route — the NORMALIZED classification from request
+				// headers, not the effective channel group (`usingGroup` can be an
+				// explicit token/playground group). This is the route-id-level
+				// validation signal (us-south/us-east/ca/default).
+				c.Header("x-geo-route-resolved", service.ResolveGeoRouteFromHeaders(c.Request.Header))
 				c.Header("X-Rayward-Geo-Bucket", geoBucket)
 				c.Header("X-Rayward-Selected-Group", usingGroup)
 				if channel != nil {
@@ -172,11 +176,9 @@ func Distribute() func(c *gin.Context) {
 						c.Header("X-Rayward-Selected-Channel", channel.Name)
 					}
 					if baseURL := strings.TrimSpace(channel.GetBaseURL()); baseURL != "" {
-						if parsed, parseErr := url.Parse(baseURL); parseErr == nil && parsed.Host != "" {
-							c.Header("X-Rayward-Selected-Base-Url", parsed.Host)
-						} else {
-							c.Header("X-Rayward-Selected-Base-Url", baseURL)
-						}
+						canonical := service.CanonicalUpstreamBaseURL(baseURL)
+						c.Header("x-upstream-base-url", canonical)         // new neutral header
+						c.Header("X-Rayward-Selected-Base-Url", canonical) // legacy, removed in Task 7
 					}
 					if channel.Tag != nil && strings.TrimSpace(*channel.Tag) != "" {
 						c.Header("X-Rayward-Selected-Tag", strings.TrimSpace(*channel.Tag))
