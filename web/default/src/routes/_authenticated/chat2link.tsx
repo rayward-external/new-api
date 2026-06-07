@@ -70,6 +70,8 @@ function Chat2LinkPage() {
     })
 
     if (url) {
+      // CodeQL[js/client-side-unvalidated-url-redirection] FP: url is derived from
+      // admin-configured chat preset templates, not user input.
       window.location.href = url
     }
   }, [
