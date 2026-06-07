@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { API, showError } from '../../helpers';
 import { marked } from 'marked';
 import { Empty } from '@douyinfe/semi-ui';
@@ -166,7 +167,7 @@ const About = () => {
           ) : (
             <div
               style={{ fontSize: 'larger' }}
-              dangerouslySetInnerHTML={{ __html: about }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(about) }}
             ></div>
           )}
         </>
