@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { Card, Tag, Timeline, Empty } from '@douyinfe/semi-ui';
 import { Bell } from 'lucide-react';
 import { marked } from 'marked';
@@ -90,7 +91,7 @@ const AnnouncementsPanel = ({
                     item.extra ? (
                       <div
                         className='text-xs text-gray-500'
-                        dangerouslySetInnerHTML={{ __html: htmlExtra }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlExtra) }}
                       />
                     ) : null
                   }
@@ -98,7 +99,7 @@ const AnnouncementsPanel = ({
                   <div>
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: marked.parse(item.content || ''),
+                        __html: DOMPurify.sanitize(marked.parse(item.content || '')),
                       }}
                     />
                   </div>

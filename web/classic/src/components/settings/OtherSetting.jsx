@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
+import DOMPurify from 'dompurify';
 import {
   Banner,
   Button,
@@ -561,7 +562,7 @@ const OtherSetting = () => {
           </Button>,
         ]}
       >
-        <div dangerouslySetInnerHTML={{ __html: updateData.content }}></div>
+        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(updateData.content) }}></div>
       </Modal>
     </Row>
   );

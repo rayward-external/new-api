@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Toast, Pagination } from '@douyinfe/semi-ui';
 import { toastConstants, BILLING_PRICING_VARS, BILLING_VAR_REGEX } from '../constants';
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { toast } from 'react-toastify';
 import {
   THINK_TAG_REGEX,
@@ -29,7 +30,7 @@ import { TABLE_COMPACT_MODES_KEY } from '../constants';
 import { MOBILE_BREAKPOINT } from '../hooks/common/useIsMobile';
 
 const HTMLToastContent = ({ htmlContent }) => {
-  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+  return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }} />;
 };
 export default HTMLToastContent;
 export function isAdmin() {

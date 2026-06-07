@@ -62,8 +62,11 @@ function OAuthCallback() {
         navigate({ to: target as never, replace: true })
         if (typeof window !== 'undefined') {
           setTimeout(() => {
+            // Enforce same-origin: ensure path starts with exactly one '/'
+            // to block both absolute URLs (https://...) and protocol-relative
+            // URLs (//evil.com) from being passed to location.replace.
             const normalizedTarget = target.startsWith('/')
-              ? target
+              ? target.replace(/^\/\/+/, '/')
               : `/${target}`
             const currentPath =
               window.location.pathname + window.location.search
@@ -71,7 +74,7 @@ function OAuthCallback() {
               currentPath !== normalizedTarget &&
               currentPath !== `${normalizedTarget}/`
             ) {
-              window.location.replace(target)
+              window.location.replace(normalizedTarget)
             }
           }, 100)
         }

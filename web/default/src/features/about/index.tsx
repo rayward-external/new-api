@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
+import DOMPurify from 'dompurify'
 import { Construction } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/components/ui/markdown'
@@ -173,7 +174,7 @@ export function About() {
         {isHtml ? (
           <div
             className='prose prose-neutral dark:prose-invert max-w-none'
-            dangerouslySetInnerHTML={{ __html: rawContent }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(rawContent) }}
           />
         ) : (
           <Markdown className='prose-neutral dark:prose-invert max-w-none'>
