@@ -7,8 +7,8 @@
 #
 # How the routine uses this:
 #   For each line, grep for the pattern in the file.
-#   PASS → patch is intact, nothing to do.
-#   FAIL → patch was wiped; agent reads the file, understands the missing invariant
+#   PASS -> patch is intact, nothing to do.
+#   FAIL -> patch was wiped; agent reads the file, understands the missing invariant
 #           from the description, and applies the minimal targeted fix using Edit.
 #   After fixing: commit, push fix branch, open PR, wait for CI, merge.
 #
@@ -51,3 +51,6 @@ relay/common/override.go  | CodeQL\[go/allocation-size-overflow\] | go/allocatio
 .github/codeql/codeql-config.yml | id: go/uncontrolled-allocation-size | suppress go/uncontrolled-allocation-size FP (common/rate-limit.go clamps capacity to [0,1_000_000])
 .github/codeql/codeql-config.yml | id: go/allocation-size-overflow | suppress go/allocation-size-overflow FPs (capacity hints bounded by in-memory slice/map lengths)
 .github/codeql/codeql-config.yml | id: go/weak-sensitive-data-hashing | suppress go/weak-sensitive-data-hashing FP (jimeng SigV4-style request signing, not password storage)
+
+# Sync log
+# 2026-06-08: security sweep — all 18 patches intact; CodeQL Go/JS-TS/Actions scans passed; Snyk skipped (no token configured).
