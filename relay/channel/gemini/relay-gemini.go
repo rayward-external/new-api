@@ -1705,6 +1705,7 @@ func FetchGeminiModels(baseURL, apiKey, proxyURL string) ([]string, error) {
 
 		request.Header.Set("x-goog-api-key", apiKey)
 
+		// CodeQL[go/request-forgery] FP: baseURL is an admin-supplied upstream channel endpoint (RootAuth route); fetching its model list is the gateway's intended function.
 		response, err := client.Do(request)
 		if err != nil {
 			cancel()

@@ -90,6 +90,7 @@ func SendEmail(subject string, receiver string, content string) error {
 		if err != nil {
 			return err
 		}
+		// CodeQL[go/email-injection] FP: CRLF is stripped from receiver above (strings.NewReplacer); CodeQL does not model the replacer as a barrier.
 		_, err = w.Write(mail)
 		if err != nil {
 			return err
@@ -99,6 +100,7 @@ func SendEmail(subject string, receiver string, content string) error {
 			return err
 		}
 	} else {
+		// CodeQL[go/email-injection] FP: CRLF is stripped from receiver above (strings.NewReplacer); CodeQL does not model the replacer as a barrier.
 		err = smtp.SendMail(addr, auth, SMTPFrom, to, mail)
 	}
 	if err != nil {

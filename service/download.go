@@ -46,6 +46,7 @@ func DoWorkerRequest(req *WorkerRequest) (*http.Response, error) {
 		return nil, fmt.Errorf("failed to marshal worker payload: %v", err)
 	}
 
+	// CodeQL[go/request-forgery] FP: workerUrl is operator-configured (system_setting.WorkerUrl); the user-supplied req.URL is SSRF-validated via ValidateURLWithFetchSetting above.
 	return GetHttpClient().Post(workerUrl, "application/json", bytes.NewBuffer(workerPayload))
 }
 

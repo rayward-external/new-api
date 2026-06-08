@@ -34,6 +34,7 @@ func getWeChatIdByCode(code string) (string, error) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
+	// CodeQL[go/request-forgery] FP: WeChatServerAddress is operator-configured; the user-supplied code is url.QueryEscape'd into the query string only.
 	httpResponse, err := client.Do(req)
 	if err != nil {
 		return "", err

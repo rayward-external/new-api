@@ -292,6 +292,7 @@ func FetchOllamaModels(baseURL, apiKey string) ([]OllamaModel, error) {
 		request.Header.Set("Authorization", "Bearer "+apiKey)
 	}
 
+	// CodeQL[go/request-forgery] FP: baseURL is an admin-supplied upstream channel endpoint (RootAuth route); fetching its model list is the gateway's intended function.
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("请求失败: %v", err)

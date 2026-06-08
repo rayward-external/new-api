@@ -20,3 +20,20 @@ common/email.go           | Strip CRLF from receiver            | SMTP header in
 common/email.go           | TLSInsecureSkipVerify                | SMTP TLS: InsecureSkipVerify must read common.TLSInsecureSkipVerify (not hardcoded true/false)
 common/rate-limit.go      | 1_000_000                           | Uncontrolled allocation: cap slice capacity to 1_000_000 to prevent OOM from misconfigured limits
 controller/misc.go        | url.QueryEscape                     | Unsafe quoting: password reset link must URL-encode the email param and use html.EscapeString on the href
+
+# CodeQL inline-suppression comments (documented false positives, audited 2026-06-08).
+# Each line proves the // CodeQL[...] FP comment is still present in the file.
+web/classic/src/components/table/model-deployments/modals/CreateDeploymentModal.jsx | crypto.getRandomValues | js/insecure-randomness FIX: generateRandomKey uses crypto.randomUUID/getRandomValues, never Math.random, for API key generation
+common/email.go           | CodeQL\[go/email-injection\]         | go/email-injection FP: receiver CRLF stripped via strings.NewReplacer; CodeQL does not model the replacer as a barrier
+controller/misc.go        | CodeQL\[go/unsafe-quoting\]          | go/unsafe-quoting FP: ServerAddress is operator config and link is html.EscapeString'd (quotes encoded) before href interpolation
+common/rate-limit.go      | CodeQL\[go/uncontrolled-allocation-size\] | go/uncontrolled-allocation-size FP: capacity clamped to [0, 1_000_000] above; CodeQL does not propagate the clamp
+controller/channel.go     | CodeQL\[go/request-forgery\]         | go/request-forgery FP: FetchModels baseURL is admin-supplied upstream channel endpoint (RootAuth); intended gateway function
+controller/channel.go     | CodeQL\[go/allocation-size-overflow\] | go/allocation-size-overflow FP: map capacity hint bounded by in-memory slice lengths; cannot overflow int
+controller/wechat.go      | CodeQL\[go/request-forgery\]         | go/request-forgery FP: WeChatServerAddress is operator config; user code is url.QueryEscape'd into query only
+relay/channel/gemini/relay-gemini.go | CodeQL\[go/request-forgery\]  | go/request-forgery FP: baseURL is admin-supplied upstream channel endpoint (RootAuth); intended gateway function
+relay/channel/ollama/relay-ollama.go | CodeQL\[go/request-forgery\]  | go/request-forgery FP: baseURL is admin-supplied upstream channel endpoint (RootAuth); intended gateway function
+service/download.go       | CodeQL\[go/request-forgery\]         | go/request-forgery FP: workerUrl is operator config; user req.URL is SSRF-validated via ValidateURLWithFetchSetting
+service/user_notify.go    | CodeQL\[go/request-forgery\]         | go/request-forgery FP: Bark finalURL is user's own endpoint, SSRF-validated via ValidateURLWithFetchSetting
+relay/channel/task/jimeng/adaptor.go | CodeQL\[go/weak-sensitive-data-hashing\] | go/weak-sensitive-data-hashing FP: provider-mandated HMAC-SHA256 request signing (SigV4-style), not password storage
+relay/common/override.go  | CodeQL\[go/allocation-size-overflow\] | go/allocation-size-overflow FP: slice capacity hint bounded by in-memory slice lengths; cannot overflow int
+.github/codeql/codeql-config.yml | useUsageLogsData.jsx | js/clear-text-storage-of-sensitive-data FP: billingDisplayMode is 'price'/'ratio' UI toggle; paths-ignore (JS inline suppression unsupported by code scanning)

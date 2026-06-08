@@ -55,16 +55,13 @@ const BUILTIN_IMAGE = 'ollama/ollama:latest';
 const DEFAULT_TRAFFIC_PORT = 11434;
 
 const generateRandomKey = () => {
-  try {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return `ionet-${crypto.randomUUID().replace(/-/g, '')}`;
-    }
-  } catch (error) {
-    // ignore
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `ionet-${crypto.randomUUID().replace(/-/g, '')}`;
   }
-  return `ionet-${Math.random().toString(36).slice(2)}${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `ionet-${hex}`;
 };
 
 const CreateDeploymentModal = ({ visible, onCancel, onSuccess, t }) => {
