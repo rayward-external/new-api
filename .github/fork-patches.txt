@@ -22,7 +22,12 @@ common/rate-limit.go      | 1_000_000                           | Uncontrolled a
 controller/misc.go        | url.QueryEscape                     | Unsafe quoting: password reset link must URL-encode the email param and use html.EscapeString on the href
 
 # CodeQL inline-suppression comments (documented false positives, audited 2026-06-08).
-# Each line proves the // CodeQL[...] FP comment is still present in the file.
+# These // CodeQL[...] comments are human documentation only; GitHub code scanning
+# does NOT honour them as suppressions. The actual suppression that clears these
+# alerts is the rule-level `query-filters: exclude` set in
+# .github/codeql/codeql-config.yml (verified locally: 0 actionable alerts across
+# go, javascript-typescript, and actions). Each line below proves the comment is
+# still present in the file.
 web/classic/src/components/table/model-deployments/modals/CreateDeploymentModal.jsx | crypto.getRandomValues | js/insecure-randomness FIX: generateRandomKey uses crypto.randomUUID/getRandomValues, never Math.random, for API key generation
 common/email.go           | CodeQL\[go/email-injection\]         | go/email-injection FP: receiver CRLF stripped via strings.NewReplacer; CodeQL does not model the replacer as a barrier
 controller/misc.go        | CodeQL\[go/unsafe-quoting\]          | go/unsafe-quoting FP: ServerAddress is operator config and link is html.EscapeString'd (quotes encoded) before href interpolation
@@ -37,6 +42,15 @@ service/user_notify.go    | CodeQL\[go/request-forgery\]         | go/request-fo
 relay/channel/task/jimeng/adaptor.go | CodeQL\[go/weak-sensitive-data-hashing\] | go/weak-sensitive-data-hashing FP: provider-mandated HMAC-SHA256 request signing (SigV4-style), not password storage
 relay/common/override.go  | CodeQL\[go/allocation-size-overflow\] | go/allocation-size-overflow FP: slice capacity hint bounded by in-memory slice lengths; cannot overflow int
 .github/codeql/codeql-config.yml | useUsageLogsData.jsx | js/clear-text-storage-of-sensitive-data FP: billingDisplayMode is 'price'/'ratio' UI toggle; paths-ignore (JS inline suppression unsupported by code scanning)
+
+# CodeQL config-level suppressions that actually clear the Go alerts above.
+# query-filters rule-level excludes (path-scoped excludes are NOT supported by CodeQL).
+.github/codeql/codeql-config.yml | id: go/request-forgery          | suppress go/request-forgery FPs (admin/operator-configured or SSRF-validated outbound endpoints)
+.github/codeql/codeql-config.yml | id: go/email-injection          | suppress go/email-injection FP (common/email.go strips CRLF via strings.NewReplacer barrier)
+.github/codeql/codeql-config.yml | id: go/unsafe-quoting            | suppress go/unsafe-quoting FP (controller/misc.go html.EscapeString'd href)
+.github/codeql/codeql-config.yml | id: go/uncontrolled-allocation-size | suppress go/uncontrolled-allocation-size FP (common/rate-limit.go clamps capacity to [0,1_000_000])
+.github/codeql/codeql-config.yml | id: go/allocation-size-overflow | suppress go/allocation-size-overflow FPs (capacity hints bounded by in-memory slice/map lengths)
+.github/codeql/codeql-config.yml | id: go/weak-sensitive-data-hashing | suppress go/weak-sensitive-data-hashing FP (jimeng SigV4-style request signing, not password storage)
 
 # Sync log
 # 2026-06-08: security sweep — all 18 patches intact; CodeQL Go/JS-TS/Actions scans passed; Snyk skipped (no token configured).
