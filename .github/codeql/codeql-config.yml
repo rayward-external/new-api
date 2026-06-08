@@ -17,9 +17,18 @@ name: "CodeQL config"
 #     js/incomplete-multi-character-sanitization FP: getPreviewText() output
 #     is consumed as text content only (never as innerHTML or rendered HTML),
 #     so incomplete tag stripping carries no injection risk in this context.
+#
+#   web/classic/src/hooks/usage-logs/useUsageLogsData.jsx
+#     js/clear-text-storage-of-sensitive-data FP: billingDisplayMode is a UI
+#     display toggle whose only values are 'price' or 'ratio' (chosen by
+#     getInitialBillingDisplayMode); it is not a credential or sensitive data.
+#     CodeQL flags it solely because the variable name contains "billing".
+#     GitHub code scanning does not honour inline // CodeQL[...] suppression
+#     comments for JS/TS queries, so a scoped paths-ignore is required.
 paths-ignore:
   - 'web/default/src/components/ai-elements/web-preview.tsx'
   - 'web/default/src/features/dashboard/lib/text.ts'
+  - 'web/classic/src/hooks/usage-logs/useUsageLogsData.jsx'
 
 query-filters:
   # go/hardcoded-credentials: three files contain non-secret placeholder strings

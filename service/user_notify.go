@@ -170,6 +170,7 @@ func sendBarkNotify(barkURL string, data dto.Notify) error {
 
 		// 发送请求
 		client := GetHttpClient()
+		// CodeQL[go/request-forgery] FP: finalURL is the user's own Bark notification endpoint and is SSRF-validated via ValidateURLWithFetchSetting above.
 		resp, err = client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to send bark request: %v", err)

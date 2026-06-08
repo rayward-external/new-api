@@ -72,6 +72,7 @@ func (l *InMemoryRateLimiter) Request(key string, maxRequestNum int, duration in
 		} else if capacity > maxCapacity {
 			capacity = maxCapacity
 		}
+		// CodeQL[go/uncontrolled-allocation-size] FP: capacity is clamped to [0, maxCapacity] above; CodeQL does not propagate the clamp as a sanitizer.
 		s := make([]int64, 0, capacity)
 		l.store[key] = &s
 		*(l.store[key]) = append(*(l.store[key]), now)

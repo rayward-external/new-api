@@ -946,6 +946,7 @@ func UpdateChannel(c *gin.Context) {
 					}
 				}
 
+				// CodeQL[go/allocation-size-overflow] FP: the size is only a map capacity hint bounded by two in-memory slice lengths; it cannot overflow int.
 				seen := make(map[string]struct{}, len(existingKeys)+len(newKeys))
 				for _, key := range existingKeys {
 					normalized := strings.TrimSpace(key)
@@ -1068,6 +1069,7 @@ func FetchModels(c *gin.Context) {
 
 	request.Header.Set("Authorization", "Bearer "+key)
 
+	// CodeQL[go/request-forgery] FP: baseURL is an admin-supplied upstream channel endpoint (RootAuth route); fetching its model list is the gateway's intended function.
 	response, err := client.Do(request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

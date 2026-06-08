@@ -283,6 +283,7 @@ func (a *TaskAdaptor) signRequest(req *http.Request, accessKey, secretKey string
 		bodyBytes = []byte{}
 	}
 
+	// CodeQL[go/weak-sensitive-data-hashing] FP: this is the provider's mandated HMAC-SHA256 request-signing protocol (Volcengine SigV4-style), not password storage.
 	payloadHash := sha256.Sum256(bodyBytes)
 	hexPayloadHash := hex.EncodeToString(payloadHash[:])
 
@@ -344,6 +345,7 @@ func (a *TaskAdaptor) signRequest(req *http.Request, accessKey, secretKey string
 		hexPayloadHash,
 	)
 
+	// CodeQL[go/weak-sensitive-data-hashing] FP: this is the provider's mandated HMAC-SHA256 request-signing protocol (Volcengine SigV4-style), not password storage.
 	hashedCanonicalRequest := sha256.Sum256([]byte(canonicalRequest))
 	hexHashedCanonicalRequest := hex.EncodeToString(hashedCanonicalRequest[:])
 

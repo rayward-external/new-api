@@ -1140,6 +1140,7 @@ func resolveHeaderOverrideValueByMapping(context map[string]interface{}, headerN
 	}
 
 	wildcardValue, hasWildcard := mapping["*"]
+	// CodeQL[go/allocation-size-overflow] FP: the capacity is only a hint bounded by two in-memory slice lengths; it cannot overflow int.
 	resultTokens := make([]string, 0, len(sourceTokens)+len(appendTokens))
 	for _, token := range sourceTokens {
 		replacementRaw, hasReplacement := mapping[token]
