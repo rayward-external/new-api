@@ -54,3 +54,4 @@ relay/common/override.go  | CodeQL\[go/allocation-size-overflow\] | go/allocatio
 
 # Sync log
 # 2026-06-08: security sweep — all 18 patches intact; CodeQL Go/JS-TS/Actions scans passed; Snyk skipped (no token configured).
+# 2026-06-09: daily maintenance — all 24 patches intact; fixed sync-pr-autopilot.sh bash quoting bug (_$REPO_ → _${REPO}_) via PR #35 (squash); Dispatch Infra Build green; Phase 2 skipped (Claude app lacks security_events/dependabot scopes).
