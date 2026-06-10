@@ -52,6 +52,11 @@ relay/common/override.go  | CodeQL\[go/allocation-size-overflow\] | go/allocatio
 .github/codeql/codeql-config.yml | id: go/allocation-size-overflow | suppress go/allocation-size-overflow FPs (capacity hints bounded by in-memory slice/map lengths)
 .github/codeql/codeql-config.yml | id: go/weak-sensitive-data-hashing | suppress go/weak-sensitive-data-hashing FP (jimeng SigV4-style request signing, not password storage)
 
+# Alert Bridge workflow (fork-only CI hygiene; upstream does not carry this).
+# Re-apply after every -X theirs sync that wipes .github/workflows/.
+# Removal condition: upstream adds equivalent code-scanning API access in their own CI.
+.github/workflows/alert-bridge.yml | mode == 'list' | Alert Bridge: workflow_dispatch for listing/dismissing code-scanning alerts via GITHUB_TOKEN (Claude app lacks security-events scope)
+
 # Sync log
 # 2026-06-08: security sweep — all 18 patches intact; CodeQL Go/JS-TS/Actions scans passed; Snyk skipped (no token configured).
 # 2026-06-09: daily maintenance — all 24 patches intact; fixed sync-pr-autopilot.sh bash quoting bug (_$REPO_ → _${REPO}_) via PR #35 (squash); Dispatch Infra Build green; Phase 2 skipped (Claude app lacks security_events/dependabot scopes).
