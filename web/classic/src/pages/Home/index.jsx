@@ -340,7 +340,7 @@ const Home = () => {
           {homePageContent.startsWith('https://') ? (
             <iframe
               src={homePageContent}
-              className='w-full h-full border-none'
+              className='w-full h-screen border-none'
             />
           ) : (
             <div
