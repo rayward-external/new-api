@@ -1,15 +1,58 @@
 package claude
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/dto"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 func commonPointer[T any](value T) *T {
 	return &value
+}
+
+func TestConvertOpenAIRequestInjectsAnthropicPromptCacheControl(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role:    "user",
+			Content: "hello",
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.JSONEq(t, `{"type":"ephemeral","ttl":"1h"}`, string(claudeReq.CacheControl))
+}
+
+func TestConvertOpenAIRequestPromptCacheControlHeaderCanDisableEnvDefault(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set(dto.AnthropicPromptCacheTTLHeader, "off")
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role:    "user",
+			Content: "hello",
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.Empty(t, claudeReq.CacheControl)
 }
 
 func TestFormatClaudeResponseInfo_MessageStart(t *testing.T) {

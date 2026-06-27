@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/channel"
@@ -95,7 +96,23 @@ func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayIn
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
-	return RequestOpenAI2ClaudeMessage(c, *request)
+	claudeReq, err := RequestOpenAI2ClaudeMessage(c, *request)
+	if err != nil {
+		return nil, err
+	}
+	ttl := os.Getenv(dto.AnthropicPromptCacheTTLEnv)
+	workload := ""
+	if c != nil {
+		if headerTTL := c.GetHeader(dto.AnthropicPromptCacheTTLHeader); headerTTL != "" {
+			ttl = headerTTL
+		}
+		workload = c.GetHeader(dto.AnthropicPromptCacheWorkloadHeader)
+	}
+	dto.ApplyAnthropicPromptCacheControlToClaudeRequest(
+		claudeReq,
+		dto.NormalizeAnthropicPromptCacheTTL(ttl, workload),
+	)
+	return claudeReq, nil
 }
 
 func (a *Adaptor) ConvertRerankRequest(c *gin.Context, relayMode int, request dto.RerankRequest) (any, error) {
