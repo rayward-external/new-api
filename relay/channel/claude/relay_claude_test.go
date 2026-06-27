@@ -1,15 +1,179 @@
 package claude
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/dto"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/types"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 func commonPointer[T any](value T) *T {
 	return &value
+}
+
+func TestConvertOpenAIRequestInjectsAnthropicPromptCacheControl(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role:    "user",
+			Content: "hello",
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.JSONEq(t, `{"type":"ephemeral","ttl":"1h"}`, string(claudeReq.CacheControl))
+}
+
+func TestConvertOpenAIRequestPromptCacheControlHeaderCanDisableEnvDefault(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set(dto.AnthropicPromptCacheTTLHeader, "off")
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role:    "user",
+			Content: "hello",
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.Empty(t, claudeReq.CacheControl)
+}
+
+func TestConvertOpenAIRequestPreservesNestedPromptCacheControl(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	clientCacheControl := map[string]any{"type": "ephemeral", "ttl": "5m"}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role: "user",
+			Content: []any{map[string]any{
+				"type":          dto.ContentTypeText,
+				"text":          "hello",
+				"cache_control": clientCacheControl,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.Empty(t, claudeReq.CacheControl)
+	blocks, ok := claudeReq.Messages[0].Content.([]dto.ClaudeMediaMessage)
+	require.True(t, ok)
+	require.Len(t, blocks, 1)
+	expected, err := json.Marshal(clientCacheControl)
+	require.NoError(t, err)
+	require.JSONEq(t, string(expected), string(blocks[0].CacheControl))
+}
+
+func TestClaudeAdaptorE2EInjectsPromptCacheControlAndForwardsUsage(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "auto")
+	gin.SetMode(gin.TestMode)
+	service.InitHttpClient()
+
+	var capturedBody []byte
+	var capturedHeaders http.Header
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/messages" {
+			t.Fatalf("upstream path = %q, want /v1/messages", r.URL.Path)
+		}
+		capturedHeaders = r.Header.Clone()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read upstream body: %v", err)
+		}
+		capturedBody = body
+
+		w.Header().Set("content-type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id":"msg_cache_e2e",
+			"type":"message",
+			"role":"assistant",
+			"model":"claude-sonnet-4-20250514",
+			"content":[{"type":"text","text":"ok"}],
+			"stop_reason":"end_turn",
+			"usage":{
+				"input_tokens":11,
+				"cache_creation_input_tokens":64,
+				"cache_read_input_tokens":32,
+				"cache_creation":{"ephemeral_1h_input_tokens":64},
+				"output_tokens":7
+			}
+		}`))
+	}))
+	defer upstream.Close()
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set("content-type", "application/json")
+	c.Request.Header.Set(dto.AnthropicPromptCacheTTLHeader, "auto")
+	c.Request.Header.Set(dto.AnthropicPromptCacheWorkloadHeader, "benchmark")
+	c.Request.Header.Set("x-trace-id", "trace-123")
+	info := &relaycommon.RelayInfo{
+		RelayFormat:     types.RelayFormatOpenAI,
+		OriginModelName: "claude-sonnet-4-20250514",
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl:  upstream.URL,
+			ApiKey:          "test-key",
+			HeadersOverride: map[string]any{"*": ""},
+		},
+	}
+	adaptor := &Adaptor{}
+	converted, err := adaptor.ConvertOpenAIRequest(c, info, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role:    "user",
+			Content: "stable evaluation prefix",
+		}},
+		MaxTokens: commonPointer(uint(16)),
+	})
+	require.NoError(t, err)
+	jsonData, err := json.Marshal(converted)
+	require.NoError(t, err)
+
+	resp, err := adaptor.DoRequest(c, info, bytes.NewReader(jsonData))
+	require.NoError(t, err)
+	usage, newAPIErr := adaptor.DoResponse(c, resp.(*http.Response), info)
+	require.Nil(t, newAPIErr)
+
+	var upstreamBody struct {
+		CacheControl map[string]string `json:"cache_control"`
+	}
+	require.NoError(t, json.Unmarshal(capturedBody, &upstreamBody))
+	require.Equal(t, map[string]string{"type": "ephemeral", "ttl": "1h"}, upstreamBody.CacheControl)
+	require.Empty(t, capturedHeaders.Get(dto.AnthropicPromptCacheTTLHeader))
+	require.Empty(t, capturedHeaders.Get(dto.AnthropicPromptCacheWorkloadHeader))
+	require.Equal(t, "trace-123", capturedHeaders.Get("x-trace-id"))
+
+	typedUsage := usage.(*dto.Usage)
+	require.Equal(t, 32, typedUsage.PromptTokensDetails.CachedTokens)
+	require.Equal(t, 64, typedUsage.PromptTokensDetails.CachedCreationTokens)
+	require.Equal(t, 64, typedUsage.ClaudeCacheCreation1hTokens)
 }
 
 func TestFormatClaudeResponseInfo_MessageStart(t *testing.T) {
