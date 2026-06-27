@@ -572,8 +572,9 @@ func (m *Message) ParseContent() []MediaContent {
 		case ContentTypeText:
 			if text, ok := contentItem["text"].(string); ok {
 				contentList = append(contentList, MediaContent{
-					Type: ContentTypeText,
-					Text: text,
+					Type:         ContentTypeText,
+					Text:         text,
+					CacheControl: mediaContentCacheControl(contentItem),
 				})
 			}
 
@@ -596,8 +597,9 @@ func (m *Message) ParseContent() []MediaContent {
 				}
 			}
 			contentList = append(contentList, MediaContent{
-				Type:     ContentTypeImageURL,
-				ImageUrl: temp,
+				Type:         ContentTypeImageURL,
+				ImageUrl:     temp,
+				CacheControl: mediaContentCacheControl(contentItem),
 			})
 
 		case ContentTypeInputAudio:
@@ -610,8 +612,9 @@ func (m *Message) ParseContent() []MediaContent {
 						Format: format,
 					}
 					contentList = append(contentList, MediaContent{
-						Type:       ContentTypeInputAudio,
-						InputAudio: temp,
+						Type:         ContentTypeInputAudio,
+						InputAudio:   temp,
+						CacheControl: mediaContentCacheControl(contentItem),
 					})
 				}
 			}
@@ -624,6 +627,7 @@ func (m *Message) ParseContent() []MediaContent {
 						File: &MessageFile{
 							FileId: fileId,
 						},
+						CacheControl: mediaContentCacheControl(contentItem),
 					})
 				} else {
 					fileName, ok1 := fileData["filename"].(string)
@@ -635,6 +639,7 @@ func (m *Message) ParseContent() []MediaContent {
 								FileName: fileName,
 								FileData: fileDataStr,
 							},
+							CacheControl: mediaContentCacheControl(contentItem),
 						})
 					}
 				}
@@ -646,6 +651,7 @@ func (m *Message) ParseContent() []MediaContent {
 					VideoUrl: &MessageVideoUrl{
 						Url: videoUrl,
 					},
+					CacheControl: mediaContentCacheControl(contentItem),
 				})
 			}
 		}
@@ -655,6 +661,18 @@ func (m *Message) ParseContent() []MediaContent {
 		m.parsedContent = contentList
 	}
 	return contentList
+}
+
+func mediaContentCacheControl(contentItem map[string]any) json.RawMessage {
+	cacheControl, ok := contentItem["cache_control"]
+	if !ok || cacheControl == nil {
+		return nil
+	}
+	data, err := common.Marshal(cacheControl)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 // old code
