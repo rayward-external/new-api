@@ -117,6 +117,23 @@ func TestApplyAnthropicPromptCacheControlToRawClaudeBody(t *testing.T) {
 	}
 }
 
+func TestApplyAnthropicPromptCacheControlToRawClaudeBodyPreservesNestedClientControl(t *testing.T) {
+	t.Setenv(anthropicPromptCacheTTLEnv, "1h")
+	c := testClaudePromptCacheContext(nil)
+	body := []byte(`{"model":"claude-sonnet-4-20250514","max_tokens":1024,"messages":[{"role":"user","content":[{"type":"text","text":"hello","cache_control":{"type":"ephemeral"}}]}]}`)
+
+	out, changed, err := applyAnthropicPromptCacheControlToRawClaudeBody(c, body)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if changed {
+		t.Fatal("expected nested client cache_control to prevent gateway injection")
+	}
+	if string(out) != string(body) {
+		t.Fatalf("body changed unexpectedly: %s", string(out))
+	}
+}
+
 func testClaudePromptCacheContext(headers map[string]string) *gin.Context {
 	gin.SetMode(gin.TestMode)
 	c := &gin.Context{}

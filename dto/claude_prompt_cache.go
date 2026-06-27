@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/tidwall/sjson"
 )
 
@@ -68,7 +69,7 @@ func ClaudeRequestHasCacheControl(req *ClaudeRequest) bool {
 	if len(req.CacheControl) > 0 {
 		return true
 	}
-	data, err := json.Marshal(req)
+	data, err := common.Marshal(req)
 	if err != nil {
 		return false
 	}
@@ -77,7 +78,7 @@ func ClaudeRequestHasCacheControl(req *ClaudeRequest) bool {
 
 func RawClaudeBodyHasCacheControl(body []byte) bool {
 	var value any
-	if err := json.Unmarshal(body, &value); err != nil {
+	if err := common.Unmarshal(body, &value); err != nil {
 		return false
 	}
 	return hasCacheControlKey(value)
