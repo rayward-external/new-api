@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -53,6 +54,36 @@ func TestConvertOpenAIRequestPromptCacheControlHeaderCanDisableEnvDefault(t *tes
 	require.NoError(t, err)
 	claudeReq := converted.(*dto.ClaudeRequest)
 	require.Empty(t, claudeReq.CacheControl)
+}
+
+func TestConvertOpenAIRequestPreservesNestedPromptCacheControl(t *testing.T) {
+	t.Setenv(dto.AnthropicPromptCacheTTLEnv, "1h")
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	clientCacheControl := map[string]any{"type": "ephemeral", "ttl": "5m"}
+
+	converted, err := (&Adaptor{}).ConvertOpenAIRequest(c, &relaycommon.RelayInfo{}, &dto.GeneralOpenAIRequest{
+		Model: "claude-sonnet-4-20250514",
+		Messages: []dto.Message{{
+			Role: "user",
+			Content: []any{map[string]any{
+				"type":          dto.ContentTypeText,
+				"text":          "hello",
+				"cache_control": clientCacheControl,
+			}},
+		}},
+	})
+
+	require.NoError(t, err)
+	claudeReq := converted.(*dto.ClaudeRequest)
+	require.Empty(t, claudeReq.CacheControl)
+	blocks, ok := claudeReq.Messages[0].Content.([]dto.ClaudeMediaMessage)
+	require.True(t, ok)
+	require.Len(t, blocks, 1)
+	expected, err := json.Marshal(clientCacheControl)
+	require.NoError(t, err)
+	require.JSONEq(t, string(expected), string(blocks[0].CacheControl))
 }
 
 func TestFormatClaudeResponseInfo_MessageStart(t *testing.T) {
